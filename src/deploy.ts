@@ -33,7 +33,10 @@ export async function deployToWorkers(
     "worker.js",
   );
 
-  const url = `https://api.cloudflare.com/client/v4/accounts/${options.accountId}/workers/scripts/${workerName}`;
+  const safeAccountId = encodeURIComponent(options.accountId);
+  const safeWorkerName = encodeURIComponent(workerName);
+
+  const url = `https://api.cloudflare.com/client/v4/accounts/${safeAccountId}/workers/scripts/${safeWorkerName}`;
 
   const res = await fetch(url, {
     method: "PUT",
@@ -49,7 +52,7 @@ export async function deployToWorkers(
   }
 
   // Enable the workers.dev subdomain route
-  const subdomainUrl = `https://api.cloudflare.com/client/v4/accounts/${options.accountId}/workers/scripts/${workerName}/subdomain`;
+  const subdomainUrl = `https://api.cloudflare.com/client/v4/accounts/${safeAccountId}/workers/scripts/${safeWorkerName}/subdomain`;
   await fetch(subdomainUrl, {
     method: "POST",
     headers: {

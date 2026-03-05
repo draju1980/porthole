@@ -87,7 +87,7 @@ Open `http://localhost:9099` in a browser to view the live inspector dashboard.
 | `entry` | `string` | **(required)** | Path to the Deno script to run |
 | `port` | `number` | `9090` | Port for the reverse proxy |
 | `inspectorPort` | `number` | `9099` | Port for the inspector dashboard |
-| `permissions` | `string[]` | `["--allow-net", "--allow-env"]` | Deno permissions for the subprocess |
+| `permissions` | `string[]` | `["--allow-net", "--allow-env"]` | Deno permission flags (`--allow-*` / `--deny-*` only) |
 | `env` | `Record<string, string>` | `{}` | Environment variables passed to the subprocess |
 | `args` | `string[]` | `[]` | Arguments passed to the subprocess |
 | `inspector` | `boolean` | `true` | Enable/disable the inspector dashboard |
@@ -284,6 +284,46 @@ You can also check the deployment in the [Cloudflare dashboard](https://dash.clo
 | `structuredClone` | |
 | `WebSocket` (client) | |
 
+## Security
+
+Porthole includes several built-in security measures:
+
+### Permission Validation
+
+The `permissions` option only accepts `--allow-*` and `--deny-*` flags for specific Deno permissions (`net`, `env`, `read`, `write`, `run`, `ffi`, `sys`, `hrtime`). Broad flags like `--allow-all` and arbitrary CLI flags are rejected to prevent privilege escalation.
+
+```ts
+// Valid
+await Sandbox.create({ entry: "./app.ts", permissions: ["--allow-net", "--deny-env"] });
+await Sandbox.create({ entry: "./app.ts", permissions: ["--allow-net=0.0.0.0"] });
+
+// Throws — invalid permission flag
+await Sandbox.create({ entry: "./app.ts", permissions: ["--allow-all"] }); // rejected
+await Sandbox.create({ entry: "./app.ts", permissions: ["--unstable"] });  // rejected
+```
+
+### Bounded Log and Request Buffers
+
+Logs and HTTP request captures are capped to prevent unbounded memory growth:
+
+- **Logs**: 10,000 entries max (`Sandbox.MAX_LOGS`)
+- **Requests**: 5,000 entries max (`Sandbox.MAX_REQUESTS`)
+
+Oldest entries are automatically trimmed when limits are reached.
+
+### XSS Protection
+
+The inspector dashboard escapes all user-controlled data (HTTP methods, URLs, headers, bodies) before rendering to prevent cross-site scripting.
+
+### API URL Safety
+
+Cloudflare API parameters (`accountId`, `workerName`) are URI-encoded to prevent URL injection in deploy requests.
+
+### Recommendations
+
+- **Inspector access**: The inspector dashboard has no authentication. Avoid exposing it on public interfaces — it is intended for local development only.
+- **Tunnel awareness**: Cloudflare Quick Tunnels expose your proxy port publicly. Only use `expose: true` (the default) when you intend public access.
+
 ## API Reference
 
 ### `Sandbox`
@@ -291,6 +331,8 @@ You can also check the deployment in the [Cloudflare dashboard](https://dash.clo
 | Property / Method | Returns | Description |
 |---|---|---|
 | `Sandbox.create(options)` | `Promise<Sandbox>` | Create and start a sandbox (auto-exposes via tunnel by default) |
+| `Sandbox.MAX_LOGS` | `number` | Maximum log entries retained (default: 10,000) |
+| `Sandbox.MAX_REQUESTS` | `number` | Maximum request entries retained (default: 5,000) |
 | `sandbox.url` | `string` | Proxy URL (`http://localhost:<port>`) |
 | `sandbox.inspectorUrl` | `string \| null` | Inspector URL (null if disabled) |
 | `sandbox.tunnelUrl` | `string \| null` | Public tunnel URL (null if not exposed) |

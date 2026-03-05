@@ -96,6 +96,19 @@ export class Sandbox {
       await ensureCloudflared();
     }
 
+    // Validate permissions — only allow specific Deno permission flags
+    const VALID_PERMS = new Set([
+      "net", "env", "read", "write", "run", "ffi", "sys", "hrtime",
+    ]);
+    for (const perm of resolved.permissions) {
+      const match = perm.match(/^--(allow|deny)-([\w-]+?)(?:=.*)?$/);
+      if (!match || !VALID_PERMS.has(match[2])) {
+        throw new Error(
+          `Invalid permission flag "${perm}": only --allow-*/ --deny-* for ${[...VALID_PERMS].join(", ")} are permitted`,
+        );
+      }
+    }
+
     const appPort = await findFreePort();
     const sandbox = new Sandbox(resolved, appPort);
     await sandbox.#start();
@@ -142,6 +155,7 @@ export class Sandbox {
       appPort: this.#appPort,
       proxyPort: this.#proxyPort,
       requests: this.#requests,
+      maxRequests: Sandbox.MAX_REQUESTS,
       onRequest: (req) => {
         this.#addLog("proxy", `${req.method} ${req.url} -> ${req.status ?? "pending"}`);
         this.#broadcastRaw({ type: "request", data: req });
@@ -181,9 +195,15 @@ export class Sandbox {
     throw new Error(`App did not start on port ${this.#appPort} within ${maxAttempts * interval}ms`);
   }
 
+  static readonly MAX_LOGS = 10_000;
+  static readonly MAX_REQUESTS = 5_000;
+
   #addLog(source: LogEntry["source"], message: string) {
     const entry: LogEntry = { timestamp: Date.now(), source, message };
     this.#logs.push(entry);
+    if (this.#logs.length > Sandbox.MAX_LOGS) {
+      this.#logs.splice(0, this.#logs.length - Sandbox.MAX_LOGS);
+    }
     this.#broadcast(entry);
   }
 

@@ -5,6 +5,7 @@ interface ProxyOptions {
   proxyPort: number;
   requests: RequestLog[];
   onRequest: (req: RequestLog) => void;
+  maxRequests?: number;
 }
 
 export function createProxy(opts: ProxyOptions): Deno.HttpServer {
@@ -63,6 +64,9 @@ export function createProxy(opts: ProxyOptions): Deno.HttpServer {
       entry.duration = Math.round(duration * 100) / 100;
 
       opts.requests.push(entry);
+      if (opts.requests.length > (opts.maxRequests ?? 5_000)) {
+        opts.requests.splice(0, opts.requests.length - (opts.maxRequests ?? 5_000));
+      }
       opts.onRequest(entry);
 
       return new Response(responseBody, {
@@ -76,6 +80,9 @@ export function createProxy(opts: ProxyOptions): Deno.HttpServer {
       entry.duration = Math.round(duration * 100) / 100;
 
       opts.requests.push(entry);
+      if (opts.requests.length > (opts.maxRequests ?? 5_000)) {
+        opts.requests.splice(0, opts.requests.length - (opts.maxRequests ?? 5_000));
+      }
       opts.onRequest(entry);
 
       return new Response(entry.responseBody, { status: 502 });

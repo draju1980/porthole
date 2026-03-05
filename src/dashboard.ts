@@ -133,7 +133,8 @@ function addRequest(req) {
   const div = document.createElement("div");
   div.className = "req-entry";
   const statusClass = req.status ? "s" + Math.floor(req.status / 100) + "xx" : "";
-  div.innerHTML = '<span class="req-method ' + req.method + '">' + req.method + '</span>'
+  const safeMethod = escapeHtml(req.method);
+  div.innerHTML = '<span class="req-method ' + safeMethod + '">' + safeMethod + '</span>'
     + '<span class="req-url">' + escapeHtml(req.url) + '</span>'
     + (req.status ? '<span class="req-status ' + statusClass + '">' + req.status + '</span>' : '')
     + (req.duration != null ? '<span class="req-duration">' + req.duration + 'ms</span>' : '');

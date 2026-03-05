@@ -1,4 +1,4 @@
-import { assertEquals, assertExists, assertStringIncludes } from "jsr:@std/assert@1";
+import { assertEquals, assertExists, assertStringIncludes, assertRejects } from "jsr:@std/assert@1";
 import { Sandbox } from "./mod.ts";
 import type { SandboxOptions, LogEntry, RequestLog, ProcessStats, DeployOptions } from "./mod.ts";
 
@@ -169,4 +169,61 @@ Deno.test("multiple requests are tracked in order", async () => {
   } finally {
     await sandbox.close();
   }
+});
+
+// Security tests
+
+Deno.test("rejects invalid permission flags", async () => {
+  await assertRejects(
+    () => Sandbox.create({ entry: "./examples/hello.ts", expose: false, permissions: ["--unstable"] }),
+    Error,
+    "Invalid permission flag",
+  );
+});
+
+Deno.test("rejects --allow-all permission flag", async () => {
+  await assertRejects(
+    () => Sandbox.create({ entry: "./examples/hello.ts", expose: false, permissions: ["--allow-all"] }),
+    Error,
+    "Invalid permission flag",
+  );
+});
+
+Deno.test("accepts valid --allow and --deny permission flags", async () => {
+  const sandbox = await Sandbox.create({
+    entry: "./examples/hello.ts",
+    expose: false,
+    inspector: false,
+    port: 18929,
+    permissions: ["--allow-net", "--allow-env", "--deny-read"],
+  });
+  try {
+    const res = await fetch(`${sandbox.url}/json`);
+    assertEquals(res.status, 200);
+    await res.text();
+  } finally {
+    await sandbox.close();
+  }
+});
+
+Deno.test("accepts --allow flags with values", async () => {
+  const sandbox = await Sandbox.create({
+    entry: "./examples/hello.ts",
+    expose: false,
+    inspector: false,
+    port: 18930,
+    permissions: ["--allow-net=0.0.0.0", "--allow-env=PORT"],
+  });
+  try {
+    assertExists(sandbox.url);
+  } finally {
+    await sandbox.close();
+  }
+});
+
+Deno.test("MAX_LOGS and MAX_REQUESTS are defined", () => {
+  assertEquals(typeof Sandbox.MAX_LOGS, "number");
+  assertEquals(typeof Sandbox.MAX_REQUESTS, "number");
+  assertEquals(Sandbox.MAX_LOGS, 10_000);
+  assertEquals(Sandbox.MAX_REQUESTS, 5_000);
 });
