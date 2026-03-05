@@ -1,6 +1,6 @@
 {
   "name": "@porthole/core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Deno-native local sandbox runtime with HTTP inspection and Cloudflare tunnel exposure",
   "license": "MIT",
   "exports": "./mod.ts",
