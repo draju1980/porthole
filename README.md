@@ -11,7 +11,7 @@ jsr:@porthole/core
 - Runs any Deno HTTP app in a subprocess sandbox
 - Reverse proxy with full request/response logging
 - Live inspector dashboard (WebSocket-powered)
-- One-call public URL via Cloudflare Quick Tunnels
+- Auto-exposes your app publicly via Cloudflare Quick Tunnels — no install needed
 - One-call deploy to Cloudflare Workers
 
 ## Installation
@@ -51,8 +51,9 @@ const sandbox = await Sandbox.create({
   entry: new URL("./app.ts", import.meta.url).pathname,
 });
 
-console.log(`Proxy:     ${sandbox.url}`);        // http://localhost:9090
+console.log(`Proxy:     ${sandbox.url}`);         // http://localhost:9090
 console.log(`Inspector: ${sandbox.inspectorUrl}`); // http://localhost:9099
+console.log(`Tunnel:    ${sandbox.tunnelUrl}`);    // https://random-words.trycloudflare.com
 
 Deno.addSignalListener("SIGINT", async () => {
   await sandbox.close();
@@ -64,11 +65,15 @@ Deno.addSignalListener("SIGINT", async () => {
 deno run --allow-all run.ts
 ```
 
-Then hit your app through the proxy:
+Your app is immediately available locally and publicly:
 
 ```bash
+# Local
 curl http://localhost:9090/
 curl http://localhost:9090/json
+
+# Public (via Cloudflare Tunnel)
+curl https://random-words.trycloudflare.com/
 ```
 
 Open `http://localhost:9099` in a browser to view the live inspector dashboard.
@@ -86,43 +91,60 @@ Open `http://localhost:9099` in a browser to view the live inspector dashboard.
 | `env` | `Record<string, string>` | `{}` | Environment variables passed to the subprocess |
 | `args` | `string[]` | `[]` | Arguments passed to the subprocess |
 | `inspector` | `boolean` | `true` | Enable/disable the inspector dashboard |
+| `expose` | `boolean` | `true` | Expose app via Cloudflare Quick Tunnel on create |
 
-## Publishing with Cloudflare Quick Tunnels
+## Cloudflare Quick Tunnels
 
-Expose your sandboxed app to the internet instantly using [Cloudflare Quick Tunnels](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/) — no Cloudflare account needed.
+By default, `Sandbox.create()` automatically exposes your app to the internet using [Cloudflare Quick Tunnels](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/) — no Cloudflare account needed.
 
-### Prerequisites
+### How it works
 
-Install `cloudflared`:
+Porthole manages the `cloudflared` binary for you:
 
-```bash
-# macOS
-brew install cloudflared
+1. If `cloudflared` is already installed on your system, Porthole uses it
+2. If not, Porthole automatically downloads the correct binary for your platform (macOS/Linux/Windows, amd64/arm64) and caches it at `~/.porthole/bin/cloudflared`
+3. A tunnel is opened from your proxy port to a public `*.trycloudflare.com` URL
+4. The tunnel is automatically closed when you call `sandbox.close()`
 
-# Linux
-curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
-chmod +x cloudflared && sudo mv cloudflared /usr/local/bin/
-```
+No manual installation required. It just works.
 
-### Usage
+### Access the tunnel URL
 
 ```ts
-import { Sandbox } from "jsr:@porthole/core";
-
 const sandbox = await Sandbox.create({
-  entry: new URL("./app.ts", import.meta.url).pathname,
+  entry: "./app.ts",
 });
 
-// Expose via Cloudflare Quick Tunnel
-const publicUrl = await sandbox.expose();
-console.log(`Public URL: ${publicUrl}`);
+console.log(sandbox.tunnelUrl);
 // => https://random-words.trycloudflare.com
-
-// Shut down when done
-await sandbox.close();
 ```
 
-`sandbox.expose()` spawns a `cloudflared` subprocess that opens a tunnel from the proxy port to a public `*.trycloudflare.com` URL. The tunnel is automatically closed when you call `sandbox.close()`.
+### Disable the tunnel
+
+If you only want local access:
+
+```ts
+const sandbox = await Sandbox.create({
+  entry: "./app.ts",
+  expose: false,
+});
+```
+
+### Manually expose later
+
+You can also disable auto-expose and open the tunnel on demand:
+
+```ts
+const sandbox = await Sandbox.create({
+  entry: "./app.ts",
+  expose: false,
+});
+
+// ... do some local testing ...
+
+const publicUrl = await sandbox.expose();
+console.log(`Now public at: ${publicUrl}`);
+```
 
 ## Deploying to Cloudflare Workers
 
@@ -268,9 +290,10 @@ You can also check the deployment in the [Cloudflare dashboard](https://dash.clo
 
 | Property / Method | Returns | Description |
 |---|---|---|
-| `Sandbox.create(options)` | `Promise<Sandbox>` | Create and start a sandbox |
+| `Sandbox.create(options)` | `Promise<Sandbox>` | Create and start a sandbox (auto-exposes via tunnel by default) |
 | `sandbox.url` | `string` | Proxy URL (`http://localhost:<port>`) |
 | `sandbox.inspectorUrl` | `string \| null` | Inspector URL (null if disabled) |
+| `sandbox.tunnelUrl` | `string \| null` | Public tunnel URL (null if not exposed) |
 | `sandbox.logs` | `readonly LogEntry[]` | All captured log entries |
 | `sandbox.requests` | `readonly RequestLog[]` | All captured HTTP requests |
 | `sandbox.stats` | `ProcessStats` | Process stats (pid, uptime, request count, ports) |

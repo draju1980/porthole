@@ -13,6 +13,8 @@ export interface SandboxOptions {
   args?: string[];
   /** Enable inspector dashboard (default: true) */
   inspector?: boolean;
+  /** Expose app via Cloudflare Quick Tunnel on create (default: true) */
+  expose?: boolean;
 }
 
 export interface RequestLog {

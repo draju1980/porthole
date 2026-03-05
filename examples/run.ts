@@ -8,6 +8,7 @@ const sandbox = await Sandbox.create({
 
 console.log(`Proxy:     ${sandbox.url}`);
 console.log(`Inspector: ${sandbox.inspectorUrl}`);
+console.log(`Tunnel:    ${sandbox.tunnelUrl ?? "disabled"}`);
 console.log(`\nPress Ctrl+C to stop\n`);
 
 Deno.addSignalListener("SIGINT", async () => {

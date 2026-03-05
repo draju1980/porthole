@@ -1,7 +1,8 @@
 import type { SandboxOptions, RequestLog, LogEntry, ProcessStats } from "./types.ts";
 import { createProxy } from "./proxy.ts";
 import { createInspector } from "./inspector.ts";
-import { openTunnel, type TunnelHandle } from "./tunnel.ts";
+import { openTunnel, ensureCloudflared, type TunnelHandle } from "./tunnel.ts";
+
 import { deployToWorkers, type DeployOptions } from "./deploy.ts";
 
 function generateId(): string {
@@ -74,11 +75,22 @@ export class Sandbox {
       env: options.env ?? {},
       args: options.args ?? [],
       inspector: options.inspector ?? true,
+      expose: options.expose ?? true,
     };
+
+    // Check for cloudflared early so users get a clear error before anything starts
+    if (resolved.expose) {
+      await ensureCloudflared();
+    }
 
     const appPort = await findFreePort();
     const sandbox = new Sandbox(resolved, appPort);
     await sandbox.#start();
+
+    if (resolved.expose) {
+      await sandbox.expose();
+    }
+
     return sandbox;
   }
 
@@ -200,6 +212,10 @@ export class Sandbox {
 
   get inspectorUrl(): string | null {
     return this.#inspectorPort ? `http://localhost:${this.#inspectorPort}` : null;
+  }
+
+  get tunnelUrl(): string | null {
+    return this.#tunnel?.url ?? null;
   }
 
   /** Open a Cloudflare Quick Tunnel to expose the proxy publicly */
