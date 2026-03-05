@@ -179,7 +179,7 @@ Deno.serve({ port, onListen: () => console.log(`App listening on port ${port}`) 
         <span class="desc">Echo request body</span>
       </a>
     </div>
-    <span class="badge">Sandbox running</span>
+    <span class="badge">Sandbox running on ${new URL(req.url).host}</span>
   </div>
   <script>
     const cities = [
