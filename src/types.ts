@@ -1,3 +1,4 @@
+/** Options for creating a sandbox instance. */
 export interface SandboxOptions {
   /** Path to the Deno script to run */
   entry: string;
@@ -17,6 +18,7 @@ export interface SandboxOptions {
   expose?: boolean;
 }
 
+/** A captured HTTP request/response pair from the reverse proxy. */
 export interface RequestLog {
   id: string;
   timestamp: number;
@@ -30,12 +32,14 @@ export interface RequestLog {
   duration: number | null;
 }
 
+/** A log entry from the sandbox subprocess or system. */
 export interface LogEntry {
   timestamp: number;
   source: "stdout" | "stderr" | "proxy" | "system";
   message: string;
 }
 
+/** Runtime statistics for the sandbox process. */
 export interface ProcessStats {
   pid: number | null;
   uptime: number;

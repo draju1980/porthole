@@ -1,3 +1,4 @@
+/** Options for deploying to Cloudflare Workers. */
 export interface DeployOptions {
   /** Cloudflare account ID */
   accountId: string;

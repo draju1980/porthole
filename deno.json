@@ -1,8 +1,10 @@
 {
   "name": "@porthole/core",
   "version": "0.1.0",
+  "description": "Deno-native local sandbox runtime with HTTP inspection and Cloudflare tunnel exposure",
   "license": "MIT",
   "exports": "./mod.ts",
+  "exclude": ["examples/", "deno.lock"],
   "tasks": {
     "example": "deno run --allow-all examples/hello.ts"
   },

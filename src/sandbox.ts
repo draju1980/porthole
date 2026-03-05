@@ -44,6 +44,18 @@ async function readStream(
   }
 }
 
+/**
+ * A sandboxed Deno subprocess with a reverse proxy, inspector dashboard,
+ * and optional Cloudflare tunnel exposure.
+ *
+ * @example
+ * ```ts
+ * import { Sandbox } from "@porthole/core";
+ *
+ * const sandbox = await Sandbox.create({ entry: "./app.ts" });
+ * console.log(sandbox.url);
+ * ```
+ */
 export class Sandbox {
   #process: Deno.ChildProcess | null = null;
   #proxyServer: Deno.HttpServer | null = null;
@@ -66,6 +78,7 @@ export class Sandbox {
     this.#startTime = Date.now();
   }
 
+  /** Create a new sandbox, spawning the app and starting the proxy/inspector. */
   static async create(options: SandboxOptions): Promise<Sandbox> {
     const resolved: Required<SandboxOptions> = {
       entry: options.entry,
@@ -187,6 +200,7 @@ export class Sandbox {
     }
   }
 
+  /** Current runtime statistics for the sandbox. */
   get stats(): ProcessStats {
     return {
       pid: this.#process?.pid ?? null,
@@ -198,22 +212,27 @@ export class Sandbox {
     };
   }
 
+  /** All log entries from the subprocess and system. */
   get logs(): readonly LogEntry[] {
     return this.#logs;
   }
 
+  /** All captured HTTP request/response pairs. */
   get requests(): readonly RequestLog[] {
     return this.#requests;
   }
 
+  /** Local proxy URL (e.g. `http://localhost:9090`). */
   get url(): string {
     return `http://localhost:${this.#proxyPort}`;
   }
 
+  /** Local inspector dashboard URL, or `null` if inspector is disabled. */
   get inspectorUrl(): string | null {
     return this.#inspectorPort ? `http://localhost:${this.#inspectorPort}` : null;
   }
 
+  /** Public Cloudflare tunnel URL, or `null` if not exposed. */
   get tunnelUrl(): string | null {
     return this.#tunnel?.url ?? null;
   }
