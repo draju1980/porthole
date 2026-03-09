@@ -1,0 +1,67 @@
+name: Deno Dependency Update
+
+on:
+  schedule:
+    - cron: "0 9 * * 1" # Every Monday at 9:00 UTC
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-deps:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: deno
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Check for outdated dependencies
+        id: check
+        run: |
+          echo "=== Current deno.lock ==="
+          cat deno.lock | head -20 || echo "No lock file"
+
+          echo "=== Updating dependencies ==="
+          deno install --reload 2>&1 | tee /tmp/deno-update.log
+
+          echo "=== Checking for changes ==="
+          cd ..
+          if git diff --quiet deno/deno.lock; then
+            echo "updated=false" >> "$GITHUB_OUTPUT"
+            echo "No dependency changes detected"
+          else
+            echo "updated=true" >> "$GITHUB_OUTPUT"
+            echo "Dependencies updated"
+          fi
+
+      - name: Run tests
+        run: deno test --allow-all
+
+      - name: Create Pull Request
+        if: steps.check.outputs.updated == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(deno): update dependencies"
+          title: "chore(deno): weekly dependency update"
+          body: |
+            ## Summary
+            - Automated weekly dependency update for the Deno package
+            - All tests pass after the update
+
+            ## Test plan
+            - [x] `deno test --allow-all` passed in CI
+            - [ ] Manual smoke test (optional)
+          branch: chore/deno-deps-update
+          delete-branch: true
+          labels: dependencies, deno
