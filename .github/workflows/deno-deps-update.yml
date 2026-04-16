@@ -12,9 +12,6 @@ permissions:
 jobs:
   update-deps:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: deno
 
     steps:
       - name: Checkout repository
@@ -35,8 +32,7 @@ jobs:
           deno install --reload 2>&1 | tee /tmp/deno-update.log
 
           echo "=== Checking for changes ==="
-          cd ..
-          if git diff --quiet deno/deno.lock; then
+          if git diff --quiet deno.lock; then
             echo "updated=false" >> "$GITHUB_OUTPUT"
             echo "No dependency changes detected"
           else
@@ -56,7 +52,7 @@ jobs:
           title: "chore(deno): weekly dependency update"
           body: |
             ## Summary
-            - Automated weekly dependency update for the Deno package
+            - Automated weekly dependency update
             - All tests pass after the update
 
             ## Test plan
